@@ -231,7 +231,7 @@ func (engine *Engine) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 3. 最后因为我们引入了`context`对`router`进行封装，所以我们对框架入口进行一些修改
 
-   ```
+   ```go
    // HandlerFunc defines the request handler used by gee
    type HandlerFunc func(*Context)
    
@@ -269,3 +269,38 @@ func (engine *Engine) ServeHTTP(w http.ResponseWriter, req *http.Request) {
    	engine.router.handle(c)
    }
    ```
+
+## 三、前缀树
+
+- 使用前缀树实现动态路由解析
+- 支持`:name`和`*filepath`两种模式
+
+简介：
+
+之前我们用map存储路由表，使用map存储键值对，索引非常高效，但是键值对的存储方式，不支持静态路由
+
+动态路由：
+
+由一条路由规则可以匹配某一类型而非某一条固定的路由，例如`hello/:name`可以匹配`/hello/mike`、`hello/jack`等
+
+实现动态路由最常用的数据结构，被称为前缀树(Trie树)，每一个节点的所有子节点都拥有相同的前缀，这种结构非常适用于路由匹配，例如我们定义了如下路由规则
+
+- /:lang/doc
+- /:lang/tutorial
+- /:lang/intro
+- /about
+- /p/blog
+- /p/related
+
+那我们的前缀树就是这样
+
+![image-20231205221258089](.\image\Trie树.jpg)
+
+http请求的路径恰好是由/分割成段的，因此可以把每一段作为前缀树的一个节点，我们通过树结构查询，如果中间某一层节点不满足条件，则代表没匹配到，查询结束
+
+
+
+所以我们的路由应该具备两个功能
+
+1. 参数匹配`：`,例如`/p/:lang/doc`，可以匹配`/p/c/doc`和`/p/go/doc`
+2. 通配`*`，例如`/static/*filepath`，可以匹配`/static/fav.ico`，也可以匹配`/static/js/jQuery.js`，这种模式常用于静态服务器，能够递归匹配子路径
