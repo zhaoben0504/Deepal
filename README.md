@@ -304,3 +304,37 @@ http请求的路径恰好是由/分割成段的，因此可以把每一段作为
 
 1. 参数匹配`：`,例如`/p/:lang/doc`，可以匹配`/p/c/doc`和`/p/go/doc`
 2. 通配`*`，例如`/static/*filepath`，可以匹配`/static/fav.ico`，也可以匹配`/static/js/jQuery.js`，这种模式常用于静态服务器，能够递归匹配子路径
+
+```go
+type node struct {
+	pattern  string // 待匹配路由，例如 /p/:lang
+	part     string // 路由中的一部分，例如 :lang
+	children []*node // 子节点，例如 [doc, tutorial, intro]
+	isWild   bool // 是否精确匹配，part 含有 : 或 * 时为true
+}
+```
+
+为实现动态路由匹配，加上了`isWild`这个参数，当我们匹配`/p/go/doc`这个路由时，第一层节点，p精准匹配到了p，第二层节点，go模糊匹配到了`:lang`，那么将会把`lang`这个参数赋值为go，继续下一层匹配。我们将匹配的逻辑封装
+
+```go
+// 第一个匹配成功的节点，用于插入
+func (n *node) matchChild(part string) *node {
+	for _, child := range n.children {
+		if child.part == part || child.isWild {
+			return child
+		}
+	}
+	return nil
+}
+// 所有匹配成功的节点，用于查找
+func (n *node) matchChildren(part string) []*node {
+	nodes := make([]*node, 0)
+	for _, child := range n.children {
+		if child.part == part || child.isWild {
+			nodes = append(nodes, child)
+		}
+	}
+	return nodes
+}
+```
+
