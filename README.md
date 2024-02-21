@@ -298,8 +298,6 @@ func (engine *Engine) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 http请求的路径恰好是由/分割成段的，因此可以把每一段作为前缀树的一个节点，我们通过树结构查询，如果中间某一层节点不满足条件，则代表没匹配到，查询结束
 
-
-
 所以我们的路由应该具备两个功能
 
 1. 参数匹配`：`,例如`/p/:lang/doc`，可以匹配`/p/c/doc`和`/p/go/doc`

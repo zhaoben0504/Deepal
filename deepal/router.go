@@ -10,9 +10,6 @@ type router struct {
 	handlers map[string]HandlerFunc
 }
 
-// roots key eg, roots['GET'] roots['POST']
-// handlers key eg, handlers['GET-/p/:lang/doc'], handlers['POST-/p/book']
-
 func newRouter() *router {
 	return &router{
 		roots:    make(map[string]*node),
@@ -76,37 +73,27 @@ func (r *router) getRoute(method string, path string) (*node, map[string]string)
 	return nil, nil
 }
 
-func (r *router) handle(c *Context) {
-	n, params := r.getRoute(c.Method, c.Path)
-	if n != nil {
-		c.Params = params
-		key := c.Method + "-" + n.pattern
-		r.handlers[key](c)
-	} else {
-		c.String(http.StatusNotFound, "404 NOT FOUND: %s\n", c.Path)
+func (r *router) getRoutes(method string) []*node {
+	root, ok := r.roots[method]
+	if !ok {
+		return nil
 	}
+	nodes := make([]*node, 0)
+	root.travel(&nodes)
+	return nodes
 }
 
-//type router struct {
-//	handlers map[string]HandlerFunc
-//}
+func (r *router) handle(c *Context) {
+	n, params := r.getRoute(c.Method, c.Path)
 
-//func newRouter() *router {
-//	return &router{handlers: make(map[string]HandlerFunc)}
-//}
-//
-//func (r *router) addRouter(method, pattern string, handler HandlerFunc) {
-//	log.Printf("route %4s - %s", method, pattern)
-//	key := method + "-" + pattern
-//	r.handlers[key] = handler
-//}
-
-//func (r *router) handle(c *Context) {
-//	key := c.Method + "-" + c.Path
-//	if handler, ok := r.handlers[key]; ok {
-//		handler(c)
-//	} else {
-//		c.String(http.StatusNotFound, "404 not found: %s\n", c.Path)
-//	}
-//
-//}
+	if n != nil {
+		key := c.Method + "-" + n.pattern
+		c.Params = params
+		c.handlers = append(c.handlers, r.handlers[key])
+	} else {
+		c.handlers = append(c.handlers, func(c *Context) {
+			c.String(http.StatusNotFound, "404 NOT FOUND: %s\n", c.Path)
+		})
+	}
+	c.Next()
+}
